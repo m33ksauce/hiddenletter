@@ -57,7 +57,7 @@ export function GameScreen({ state, busy, onChange, onNewLetter }: GameScreenPro
     [fills, onChange, selectedColor, state],
   )
 
-  const buildPuzzle = useCallback(async (density: number) => {
+  const buildPuzzle = useCallback(async (density: number, shuffle = false) => {
     const nextDensity = clampDensity(density)
     const latest = stateRef.current
     const id = requestId.current + 1
@@ -66,7 +66,7 @@ export function GameScreen({ state, busy, onChange, onNewLetter }: GameScreenPro
     setWorking(true)
     setRevealed(false)
     try {
-      const nextPuzzle = await generatePuzzle(latest.puzzle.letter, nextDensity)
+      const nextPuzzle = await generatePuzzle(latest.puzzle.letter, nextDensity, shuffle)
       if (requestId.current !== id) return
       onChangeRef.current({
         ...latest,
@@ -107,7 +107,7 @@ export function GameScreen({ state, busy, onChange, onNewLetter }: GameScreenPro
             <button
               type="button"
               className="ghost"
-              onClick={() => void buildPuzzle(state.density)}
+              onClick={() => void buildPuzzle(state.density, true)}
               disabled={isBusy}
             >
               New puzzle

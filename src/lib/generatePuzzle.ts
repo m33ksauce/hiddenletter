@@ -28,7 +28,11 @@ function labelCells(letter: string, seed: number, width: number, density: number
   })
 }
 
-export async function generatePuzzle(letter: string, density = DEFAULT_DENSITY): Promise<Puzzle> {
+export async function generatePuzzle(
+  letter: string,
+  density = DEFAULT_DENSITY,
+  shuffle = false,
+): Promise<Puzzle> {
   if (!/^[A-Za-z]$/.test(letter)) {
     throw new Error('Only a single letter A–Z is allowed')
   }
@@ -39,7 +43,7 @@ export async function generatePuzzle(letter: string, density = DEFAULT_DENSITY):
   const gridSeed = sliceSeedForLetter(letter)
 
   for (let attempt = 0; attempt < 8; attempt++) {
-    const seed = attempt === 0 ? gridSeed : randomSeed()
+    const seed = attempt === 0 && !shuffle ? gridSeed : randomSeed()
     const pieces = sliceCanvas(base.outline, base.width, level, seed)
     const cells: PuzzleCell[] = pieces.map((piece, index) => ({
       id: `c${index}`,
