@@ -263,6 +263,9 @@ function bestInteriorPoint(rings: Point[][], boundary: Point[][]): Point {
   return best
 }
 
+/** Minimum rendered label size — smaller pieces are merged away in slicing. */
+export const MIN_CELL_LABEL = 8
+
 /** Place a single-character label fully inside the piece, away from cut edges. */
 export function ringsLabelPlacement(
   rings: Point[][],
@@ -275,6 +278,14 @@ export function ringsLabelPlacement(
   const strokePad = 8
   const size = Math.min(labelSize, Math.max(0, (inset - strokePad) * 2))
   return { anchor, size }
+}
+
+export function cellLabelFits(
+  rings: Point[][],
+  labelSize: number,
+  bulges?: number[],
+): boolean {
+  return ringsLabelPlacement(rings, labelSize, bulges).size >= MIN_CELL_LABEL
 }
 
 export function quadArea(corners: Point[]): number {

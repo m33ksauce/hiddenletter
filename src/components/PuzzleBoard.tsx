@@ -1,5 +1,5 @@
 import { useCallback, useRef, type PointerEvent } from 'react'
-import { cellToPath } from '../lib/geometry'
+import { cellToPath, MIN_CELL_LABEL } from '../lib/geometry'
 import { ERASER_ID } from '../lib/colors'
 import type { Puzzle } from '../lib/types'
 
@@ -82,7 +82,7 @@ export function PuzzleBoard({
       </g>
       <g className="board-labels">
         {puzzle.cells.map((cell) =>
-          cell.labelSize >= 8 ? (
+          cell.labelSize >= MIN_CELL_LABEL ? (
             <text
               key={`${cell.id}-label`}
               className="cell-label"

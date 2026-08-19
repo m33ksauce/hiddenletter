@@ -2,6 +2,7 @@ import type { MultiPolygon } from 'polygon-clipping'
 import { buildCurveVoronoiMesh } from './curveVoronoiMesh'
 import { densityPlan } from './difficulty'
 import {
+  cellLabelFits,
   dist2,
   ringsArea,
   ringsCentroid,
@@ -93,6 +94,91 @@ function mergeFragments(fragments: Fragment[], minKeep: number): Fragment[] {
   return items
 }
 
+function mergeIntoNearest(items: Fragment[], tiny: Fragment): boolean {
+  let neighborIndex = -1
+  let bestDistance = Infinity
+  for (let i = 0; i < items.length; i++) {
+    const other = items[i]
+    if (!other || other === tiny || other.isSolution !== tiny.isSolution) continue
+    const distance = dist2(tiny.centroid, other.centroid)
+    if (distance < bestDistance) {
+      bestDistance = distance
+      neighborIndex = i
+    }
+  }
+  if (neighborIndex < 0) return false
+  const neighbor = items[neighborIndex]
+  if (!neighbor) return false
+  const united = unionRings(tiny.rings, neighbor.rings)
+  if (!united) return false
+  const merged = toFragment(united, tiny.isSolution)
+  if (!merged) return false
+  const tinyIndex = items.indexOf(tiny)
+  const high = Math.max(tinyIndex, neighborIndex)
+  const low = Math.min(tinyIndex, neighborIndex)
+  items.splice(high, 1)
+  items.splice(low, 1)
+  items.push(merged)
+  return true
+}
+
+/** Fold clipping slivers and edge specks into a neighbor so every tile can show a label. */
+function mergeUnlabelable(fragments: Fragment[], labelSize: number): Fragment[] {
+  const items = fragments.filter((fragment) => fragment.area >= 8)
+  const skipped = new Set<Fragment>()
+
+  for (let pass = 0; pass < items.length + 8; pass++) {
+    let badIndex = -1
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i]
+      if (!item || skipped.has(item)) continue
+      if (cellLabelFits(item.rings, labelSize, item.bulges)) continue
+      if (badIndex < 0 || item.area < (items[badIndex]?.area ?? Infinity)) {
+        badIndex = i
+      }
+    }
+    if (badIndex < 0) break
+
+    const tiny = items[badIndex]
+    if (!tiny) break
+
+    const candidates: Array<{ index: number; distance: number }> = []
+    for (let i = 0; i < items.length; i++) {
+      if (i === badIndex) continue
+      const other = items[i]
+      if (!other || other.isSolution !== tiny.isSolution) continue
+      if (!ringsNearlyTouch(tiny.rings, other.rings, 6)) continue
+      candidates.push({ index: i, distance: dist2(tiny.centroid, other.centroid) })
+    }
+    candidates.sort((a, b) => a.distance - b.distance)
+
+    let merged = false
+    for (const candidate of candidates) {
+      const neighbor = items[candidate.index]
+      if (!neighbor) continue
+      const united = unionRings(tiny.rings, neighbor.rings)
+      if (!united) continue
+      const next = toFragment(united, tiny.isSolution)
+      if (!next) continue
+      const high = Math.max(badIndex, candidate.index)
+      const low = Math.min(badIndex, candidate.index)
+      items.splice(high, 1)
+      items.splice(low, 1)
+      items.push(next)
+      merged = true
+      break
+    }
+
+    if (merged) continue
+
+    if (mergeIntoNearest(items, tiny)) continue
+
+    skipped.add(tiny)
+  }
+
+  return items.filter((item) => cellLabelFits(item.rings, labelSize, item.bulges))
+}
+
 export function sliceCanvas(
   outline: MultiPolygon,
   size: number,
@@ -107,10 +193,16 @@ export function sliceCanvas(
     centroid: piece.centroid,
   }))
 
-  const solution = pieces.filter((piece) => piece.isSolution)
-  const decoys = mergeFragments(
-    pieces.filter((piece) => !piece.isSolution),
-    plan.mergeBelow * 0.35,
+  const solution = mergeUnlabelable(
+    pieces.filter((piece) => piece.isSolution),
+    plan.labelSize,
+  )
+  const decoys = mergeUnlabelable(
+    mergeFragments(
+      pieces.filter((piece) => !piece.isSolution),
+      plan.mergeBelow * 0.35,
+    ),
+    plan.labelSize,
   )
   return [...solution, ...decoys]
 }

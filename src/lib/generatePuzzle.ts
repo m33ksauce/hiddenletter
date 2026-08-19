@@ -1,5 +1,5 @@
 import { clampDensity, DEFAULT_DENSITY, densityPlan } from './difficulty'
-import { ringsLabelPlacement } from './geometry'
+import { cellLabelFits, ringsLabelPlacement } from './geometry'
 import { loadBaseLetterShape } from './letterMask'
 import { UPPERCASE_LETTERS, withLetterCase } from './letters'
 import { mulberry32, pickOne, randomSeed, type Rng } from './rng'
@@ -56,7 +56,8 @@ export async function generatePuzzle(
 
     const labeled = labelCells(letter, seed, base.width, level, cells)
     const solutionCount = labeled.filter((cell) => cell.isSolution).length
-    if (labeled.length >= plan.minCells && solutionCount >= plan.minSolution) {
+    const allLabeled = labeled.every((cell) => cellLabelFits(cell.rings, plan.labelSize, cell.bulges))
+    if (allLabeled && labeled.length >= plan.minCells && solutionCount >= plan.minSolution) {
       return {
         letter,
         width: base.width,
