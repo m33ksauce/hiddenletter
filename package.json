@@ -1,0 +1,37 @@
+{
+  "name": "hiddenletter",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "oxlint",
+    "preview": "npm run build && vite preview",
+    "deploy": "npm run build && wrangler deploy",
+    "populate-letters": "node scripts/populate-letters.mjs",
+    "reslice-letters": "node scripts/reslice-letters.mjs"
+  },
+  "dependencies": {
+    "@fontsource-variable/fredoka": "5.3.0",
+    "d3-contour": "4.0.2",
+    "jspdf": "4.2.1",
+    "polygon-clipping": "0.15.7",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "1.52.1",
+    "@types/d3-contour": "3.0.6",
+    "@types/node": "^24.13.3",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.4",
+    "happy-dom": "20.11.2",
+    "oxlint": "^1.75.0",
+    "puppeteer": "24.2.0",
+    "typescript": "~6.0.2",
+    "vite": "^8.2.0",
+    "wrangler": "4.123.0"
+  }
+}
