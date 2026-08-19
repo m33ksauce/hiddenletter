@@ -40,14 +40,12 @@ npm run deploy
 
 That builds the app and deploys it. SPA routes use `assets.not_found_handling = "single-page-application"` in `wrangler.jsonc`.
 
-### GitHub → Cloudflare (recommended)
+### GitHub → Cloudflare
 
-1. Push this repo to GitHub (see below).
-2. In the [Cloudflare dashboard](https://dash.cloudflare.com/?to=/:account/workers-and-pages), open the **hiddenletter** worker → **Settings** → **Builds** → **Connect** your GitHub repo.
-3. Set **Build command** to `npm run build` and **Deploy command** to `npm run deploy` (or `npx wrangler deploy`).
-4. Production branch: `main`. Push to deploy automatically.
+Connect the repo in the [Cloudflare dashboard](https://dash.cloudflare.com/?to=/:account/workers-and-pages): open the **hiddenletter** worker → **Settings** → **Builds** → connect `m33ksauce/hiddenletter`.
 
-Alternatively, GitHub Actions (`.github/workflows/deploy.yml`) deploys on push to `main` when these repository secrets are set:
+- **Build command:** `npm run build`
+- **Deploy command:** `npm run deploy`
+- **Production branch:** `main`
 
-- `CLOUDFLARE_API_TOKEN` — Workers edit token ([create one](https://dash.cloudflare.com/profile/api-tokens))
-- `CLOUDFLARE_ACCOUNT_ID` — your Cloudflare account ID
+Pushes to `main` build and deploy automatically.
