@@ -6,7 +6,7 @@ import { GAME_STATE_VERSION } from './types'
 
 /** Bump when puzzle geometry rules change (invalidates localStorage). */
 
-const STORAGE_KEY = 'hiddenletter:v2'
+const STORAGE_KEY = 'hiddenletter:v4'
 
 function withLabelAnchor(cell: PuzzleCell): PuzzleCell {
   const placement = ringsLabelPlacement(cell.rings, cell.labelSize, cell.bulges)

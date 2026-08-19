@@ -1,16 +1,13 @@
 import type { MultiPolygon } from 'polygon-clipping'
+import { buildCurveVoronoiMesh } from './curveVoronoiMesh'
 import { densityPlan } from './difficulty'
 import {
   dist2,
   ringsArea,
   ringsCentroid,
   ringsNearlyTouch,
-  sampleQuadRing,
 } from './geometry'
-import { buildLetterQuads, partitionRings } from './letterQuadMesh'
-import { splitCellByLetter, unionRings } from './letterShape'
-import { buildQuadGrid } from './quadGrid'
-import { mulberry32 } from './rng'
+import { unionRings } from './letterShape'
 import type { Point } from './types'
 
 export type SlicePiece = {
@@ -96,53 +93,6 @@ function mergeFragments(fragments: Fragment[], minKeep: number): Fragment[] {
   return items
 }
 
-function quadBox(corners: Point[]) {
-  let x0 = Infinity
-  let y0 = Infinity
-  let x1 = -Infinity
-  let y1 = -Infinity
-  for (const point of corners) {
-    x0 = Math.min(x0, point[0])
-    y0 = Math.min(y0, point[1])
-    x1 = Math.max(x1, point[0])
-    y1 = Math.max(y1, point[1])
-  }
-  return { x0, y0, x1, y1 }
-}
-
-function buildExteriorPieces(
-  outline: MultiPolygon,
-  size: number,
-  density: number,
-  seed: number,
-  targetCount: number,
-): Fragment[] {
-  const plan = densityPlan(density, size)
-  const rng = mulberry32(seed)
-  const quads = buildQuadGrid(size, targetCount, rng)
-  const partitionTarget = Math.max(
-    plan.targetArea,
-    (size * size) / Math.max(4, targetCount * 0.95),
-  )
-  const fragments: Fragment[] = []
-
-  for (const quad of quads) {
-    const cell = sampleQuadRing(quad.corners, quad.bulges, 6)
-    const { outside } = splitCellByLetter(cell, outline)
-    const box = quadBox(quad.corners)
-
-    for (const rings of outside) {
-      const parts = partitionRings(rings, box, partitionTarget, size, rng)
-      for (const part of parts) {
-        const fragment = toFragment(part.rings, false)
-        if (fragment) fragments.push(fragment)
-      }
-    }
-  }
-
-  return fragments
-}
-
 export function sliceCanvas(
   outline: MultiPolygon,
   size: number,
@@ -150,20 +100,19 @@ export function sliceCanvas(
   seed: number,
 ): SlicePiece[] {
   const plan = densityPlan(density, size)
-
-  const solutionFragments: Fragment[] = buildLetterQuads(outline, size, density, seed).map((quad) => ({
-    rings: quad.rings,
-    isSolution: true,
-    area: quad.area,
-    centroid: ringsCentroid(quad.rings),
+  const pieces = buildCurveVoronoiMesh(outline, size, density, seed).map((piece) => ({
+    rings: piece.rings,
+    isSolution: piece.isSolution,
+    area: piece.area,
+    centroid: piece.centroid,
   }))
 
-  const decoyTarget = Math.max(4, plan.siteCount - solutionFragments.length)
-  const exteriorFragments = mergeFragments(
-    buildExteriorPieces(outline, size, density, seed, decoyTarget),
+  const solution = pieces.filter((piece) => piece.isSolution)
+  const decoys = mergeFragments(
+    pieces.filter((piece) => !piece.isSolution),
     plan.mergeBelow * 0.35,
   )
-  return [...solutionFragments, ...exteriorFragments]
+  return [...solution, ...decoys]
 }
 
 export function sliceSolutionOnly(
@@ -172,12 +121,14 @@ export function sliceSolutionOnly(
   density: number,
   seed: number,
 ): SlicePiece[] {
-  return buildLetterQuads(outline, size, density, seed).map((quad) => ({
-    rings: quad.rings,
-    isSolution: true,
-    area: quad.area,
-    centroid: ringsCentroid(quad.rings),
-  }))
+  return buildCurveVoronoiMesh(outline, size, density, seed)
+    .filter((piece) => piece.isSolution)
+    .map((piece) => ({
+      rings: piece.rings,
+      isSolution: true,
+      area: piece.area,
+      centroid: piece.centroid,
+    }))
 }
 
 /** Fixed seed per letter so the grid is stable while density changes piece count. */

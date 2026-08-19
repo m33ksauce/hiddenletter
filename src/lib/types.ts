@@ -1,7 +1,7 @@
 export type Point = [number, number]
 
 /** Bump when saved puzzle geometry rules change (invalidates localStorage). */
-export const GAME_STATE_VERSION = 5 as const
+export const GAME_STATE_VERSION = 9 as const
 
 export type PuzzleCell = {
   id: string

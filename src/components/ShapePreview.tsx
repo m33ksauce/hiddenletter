@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { outlineToPath } from '../lib/baseShape'
 import { cellToPath } from '../lib/geometry'
 import { loadBaseLetterShape, type BaseLetterShape } from '../lib/letterMask'
-import { sliceSeedForLetter, sliceSolutionOnly } from '../lib/sliceCanvas'
+import { curveVoronoiGraphForPreview, graphVoronoiCellsForPreview } from '../lib/curveVoronoiMesh'
+import { sliceSeedForLetter } from '../lib/sliceCanvas'
 import { DifficultyMeter } from './DifficultyMeter'
 
 import { UPPERCASE_LETTERS } from '../lib/letters'
@@ -39,9 +40,14 @@ export function ShapePreview({ density, onDensityChange, onBack, onPlay }: Shape
     void loadShape(selected)
   }, [loadShape, selected])
 
-  const slices = useMemo(() => {
+  const graph = useMemo(() => {
+    if (!shape) return null
+    return curveVoronoiGraphForPreview(shape.outline, shape.width, density, sliceSeedForLetter(selected))
+  }, [density, selected, shape])
+
+  const voronoiCells = useMemo(() => {
     if (!shape) return []
-    return sliceSolutionOnly(shape.outline, shape.width, density, sliceSeedForLetter(selected))
+    return graphVoronoiCellsForPreview(shape.outline, shape.width, density, sliceSeedForLetter(selected))
   }, [density, selected, shape])
 
   return (
@@ -49,9 +55,8 @@ export function ShapePreview({ density, onDensityChange, onBack, onPlay }: Shape
       <p className="eyebrow">Step 2 — slice the base</p>
       <h1>Solution pieces</h1>
       <p className="lede">
-        Each piece crosses a stroke from outline to outline. Cuts follow the
-        letter, stay short, and do not sit side-by-side on one edge. Holes
-        stay empty.
+        Graph nodes define sites; Voronoi cells are built separately per
+        region (interior vs exterior), then clipped to the letter.
       </p>
 
       <DifficultyMeter value={density} onChange={onDensityChange} />
@@ -120,12 +125,13 @@ export function ShapePreview({ density, onDensityChange, onBack, onPlay }: Shape
             aria-label={`Sliced base shape for ${shape.letter}`}
           >
             <rect width={shape.width} height={shape.height} fill="#fffdf8" />
-            {slices.map((piece, index) => (
+            {voronoiCells.map((cell, index) => (
               <path
-                key={`slice-${index}`}
-                className="shape-slice"
-                d={cellToPath(piece.rings, piece.bulges)}
-                fill="#ffd166"
+                key={`voronoi-${cell.siteId}-${index}`}
+                d={cellToPath(cell.rings)}
+                fill={cell.region === 'interior' ? '#ffd166' : 'rgba(147, 197, 253, 0.35)'}
+                stroke="#111"
+                strokeWidth="2.5"
                 fillRule="evenodd"
               />
             ))}
@@ -135,12 +141,41 @@ export function ShapePreview({ density, onDensityChange, onBack, onPlay }: Shape
               fill="none"
               fillRule="evenodd"
             />
+            {graph?.curves.map((curve, i) => {
+              const siteA = graph.sites.find((s) => s.id === curve.a)
+              const siteB = graph.sites.find((s) => s.id === curve.b)
+              const cross =
+                siteA && siteB && siteA.region !== siteB.region
+              return (
+                <polyline
+                  key={`curve-${i}`}
+                  points={curve.points.map((p) => `${p[0]},${p[1]}`).join(' ')}
+                  fill="none"
+                  stroke={cross ? '#a855f7' : siteA?.region === 'interior' ? '#ef4444' : '#3b82f6'}
+                  strokeWidth={cross ? 2 : 1.5}
+                  opacity={cross ? 0.7 : 0.45}
+                  strokeDasharray={cross ? '6 4' : undefined}
+                />
+              )
+            })}
+            {graph?.sites.map((site) => (
+              <circle
+                key={`site-${site.id}`}
+                cx={site.point[0]}
+                cy={site.point[1]}
+                r={site.region === 'interior' ? 5 : 4}
+                fill={site.region === 'interior' ? '#ef4444' : '#3b82f6'}
+                stroke="#fff"
+                strokeWidth="1"
+              />
+            ))}
           </svg>
         ) : null}
       </div>
 
       <p className="hint shape-hint">
-        {slices.length} solution pieces at this difficulty. Adjust the slider to change piece count.
+        {voronoiCells.filter((c) => c.region === 'interior').length} interior Voronoi
+        cells at this difficulty. Adjust the slider to change site count.
       </p>
     </main>
   )

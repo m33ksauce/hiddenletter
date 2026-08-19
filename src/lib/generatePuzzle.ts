@@ -3,7 +3,7 @@ import { ringsLabelPlacement } from './geometry'
 import { loadBaseLetterShape } from './letterMask'
 import { UPPERCASE_LETTERS, withLetterCase } from './letters'
 import { mulberry32, pickOne, randomSeed, type Rng } from './rng'
-import { sliceCanvas, sliceSeedForLetter } from './sliceCanvas'
+import { sliceCanvas } from './sliceCanvas'
 import type { Puzzle, PuzzleCell } from './types'
 
 const ALPHA = UPPERCASE_LETTERS
@@ -31,7 +31,6 @@ function labelCells(letter: string, seed: number, width: number, density: number
 export async function generatePuzzle(
   letter: string,
   density = DEFAULT_DENSITY,
-  shuffle = false,
 ): Promise<Puzzle> {
   if (!/^[A-Za-z]$/.test(letter)) {
     throw new Error('Only a single letter A–Z is allowed')
@@ -40,10 +39,9 @@ export async function generatePuzzle(
   const level = clampDensity(density)
   const base = await loadBaseLetterShape(letter)
   const plan = densityPlan(level, base.width)
-  const gridSeed = sliceSeedForLetter(letter)
 
   for (let attempt = 0; attempt < 8; attempt++) {
-    const seed = attempt === 0 && !shuffle ? gridSeed : randomSeed()
+    const seed = randomSeed()
     const pieces = sliceCanvas(base.outline, base.width, level, seed)
     const cells: PuzzleCell[] = pieces.map((piece, index) => ({
       id: `c${index}`,

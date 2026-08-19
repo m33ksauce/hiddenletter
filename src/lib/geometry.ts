@@ -149,6 +149,11 @@ export function pointInRings(point: Point, rings: Point[][]): boolean {
   return true
 }
 
+/** Point inside the letter solid (outer boundary minus holes). */
+export function pointInLetterSolid(point: Point, letterRings: Point[][]): boolean {
+  return pointInRings(point, letterRings)
+}
+
 export function ringsCentroid(rings: Point[][]): Point {
   const outer = rings[0]
   if (!outer) return [0, 0]
